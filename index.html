@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Car Payment Truth Calculator</title>
+  <title>Car Payment Calculator</title>
   <style>
     :root {
       --bg: #070b14;
@@ -201,6 +201,31 @@
       border-color: rgba(88, 166, 255, 0.48);
     }
 
+    .scenario {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(88, 166, 255, 0.08);
+      border: 1px solid rgba(88, 166, 255, 0.25);
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .scenario strong {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .scenario strong.down-scenario {
+      color: var(--good);
+      font-style: italic;
+    }
+
+    .scenario strong.trade-scenario {
+      color: var(--good);
+      font-style: italic;
+    }
+
     .big-payment .result-value {
       color: var(--primary-dark);
       font-size: 40px;
@@ -258,6 +283,15 @@
       font-size: 12px;
     }
 
+    aside {
+      display: grid;
+      gap: 20px;
+    }
+
+    .deal-check-card h3 {
+      margin-top: 18px;
+    }
+
     .full-width { grid-column: 1 / -1; }
 
     @media (max-width: 880px) {
@@ -266,11 +300,12 @@
       .hero { padding: 22px; }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <main class="app">
     <section class="hero">
-      <h1>Car Payment Truth Calculator</h1>
+      <h1>Car Payment Calculator</h1>
       <p>Estimate a real auto payment, compare it to the dealership quote, and get smart deal tips before you walk into the finance office.</p>
     </section>
 
@@ -291,13 +326,13 @@
               <div>
                 <label for="addOns">Dealer Add-ons / Accessories</label>
                 <input id="addOns" class="money-input" type="text" inputmode="decimal" value="$1,295.00" />
-                <div class="helper">Extras like protection packages, GPS, or dealer markup.</div>
+                <div class="helper">Extras like protection packages, GPS, or dealer markup. These can often be negotiated!</div>
               </div>
 
               <div>
                 <label for="rebate">Rebate</label>
                 <input id="rebate" class="money-input" type="text" inputmode="decimal" value="$0.00" />
-                <div class="helper">Manufacturer discounts or incentives.</div>
+                <div class="helper">Manufacturer discounts or incentives. These are usually set by the manufacturer, and can change at any time. Ask to see the rebate guidelines provided by the manufacturer to the dealer.</div>
               </div>
             </div>
           </div>
@@ -337,7 +372,7 @@
               <div>
                 <label for="taxRate">Tax Rate</label>
                 <input id="taxRate" type="number" value="3.90" min="0" step="0.01" />
-                <div class="helper">Ask the dealer what tax rate they are using.</div>
+                <div class="helper">Ask the dealer what tax rate they are using. Each state and county applies taxes differently. Ask if the dealer is taxing your home zip code, or if taxes are based on the dealer’s location.</div>
               </div>
 
               <div>
@@ -347,12 +382,27 @@
                   <option value="full">Tax full selling price</option>
                   <option value="manual">Manual taxable amount</option>
                 </select>
-                <div class="helper" style="font-weight:700;color:var(--text);"><strong>Don’t guess the tax.</strong> Ask for it. Then verify the payment. Ask if tax is applied to full price or trade difference.</div>
+                <div class="helper">Ask if tax is applied to the Vehicle Selling Price or the difference of the Vehicle Selling Price and the Trade-in Value.</div>
+              </div>
+
+              <div class="full-width">
+                <div class="result-box">
+                  <div class="result-label">Estimated Tax</div>
+                  <div class="result-value" id="taxCharge">$0.00</div>
+                </div>
+              </div>
+
+              <div class="full-width">
+                <div class="result-box">
+                  <div class="result-label">Total Taxes & Fees</div>
+                  <div class="result-value" id="totalTaxesFees">$0.00</div>
+                  <div class="helper">Combined total of estimated tax, doc fee, and registration fees.</div>
+                </div>
               </div>
 
               <div id="manualTaxableWrap" style="display:none;">
                 <label for="manualTaxable">Manual Taxable Amount</label>
-                <input id="manualTaxable" type="number" value="0" min="0" step="100" />
+                <input id="manualTaxable" type="number" value="0" min="0" step="0.01" />
                 <div class="helper">Use only if dealer gives exact taxable amount.</div>
               </div>
             </div>
@@ -369,7 +419,7 @@
               <div>
                 <label for="apr">Interest Rate / APR</label>
                 <input id="apr" type="number" value="7.99" min="0" step="0.01" />
-                <div class="helper">Ask: is this the buy rate or marked-up rate? Many lenders allow dealers to mark up the rate by up to 2 percentage points.</div>
+                <div class="helper">Ask: is this the buy rate or marked-up rate? Lenders or local state laws can dictate the allowable mark-up percentage of an interest rate.</div>
               </div>
 
               <div>
@@ -385,73 +435,94 @@
               </div>
             </div>
           </div>
-
-          <div class="section-card">
-            <h3>Dealer Quote Check</h3>
-            <div class="section-grid">
-              <div class="full-width">
-                <label for="dealerQuote">Dealer Quoted Monthly Payment</label>
-                <input id="dealerQuote" class="money-input" type="text" inputmode="decimal" value="$725.00" />
-                <div class="helper">What the dealership told you your payment will be.</div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div class="button-row">
           <button class="primary" onclick="calculateDeal()">Calculate Payment</button>
+          <button class="secondary" onclick="downloadDealSummaryPdf()">Download PDF Summary</button>
+          <button class="secondary" onclick="printDealSummary()">Print Summary</button>
           <button class="secondary" onclick="resetExample()">Reset Example</button>
         </div>
 
         <p class="disclaimer">This is an estimate only. Taxes, fees, registration, lender calculations, credit approval, and state rules may vary. Always ask the dealership for a complete buyer’s order.</p>
       </div>
 
-      <aside class="card">
-        <h2>Results</h2>
-        <div class="results">
-          <div class="result-box big-payment">
-            <div class="result-label">Estimated Monthly Payment</div>
-            <div class="result-value" id="monthlyPayment">$0</div>
-          </div>
+      <aside>
+        <div class="card">
+          <h2>Results</h2>
+          <div class="results">
+            <div class="result-box big-payment">
+              <div class="result-label">Estimated Monthly Payment</div>
+              <div class="result-value" id="monthlyPayment">$0</div>
+              <div class="helper">Your estimated monthly payment based on the numbers entered.</div>
+              <div class="scenario" id="altDown">
+                <strong class="down-scenario">If you were to put additional money down:</strong><br>
+                $1,000 → $0.00<br>
+                $2,000 → $0.00<br>
+                $3,000 → $0.00
+              </div>
+              <div class="scenario" id="altTrade">
+                <strong class="trade-scenario">If the dealer were to give you additional money for your trade-in:</strong><br>
+                $500 → $0.00<br>
+                $1,000 → $0.00<br>
+                $1,500 → $0.00
+              </div>
+            </div>
 
-          <div class="result-box">
-            <div class="result-label">Amount Financed</div>
-            <div class="result-value" id="amountFinanced">$0</div>
-          </div>
+            <div class="result-box">
+              <div class="result-label">Total Amount Financed</div>
+              <div class="result-value" id="amountFinanced">$0</div>
+              <div class="helper">The total amount you are borrowing after trade, taxes, fees, and cash down are applied.</div>
+            </div>
 
-          <div class="result-box">
-            <div class="result-label">Estimated Tax</div>
-            <div class="result-value" id="taxCharge">$0</div>
-          </div>
-
-          <div class="result-box">
-            <div class="result-label">Dealer Quote Difference</div>
-            <div class="result-value" id="paymentDifference">$0</div>
-          </div>
-
-          <div class="result-box">
-            <div class="result-label">Difference Over Loan Term</div>
-            <div class="result-value" id="totalDifference">$0</div>
-          </div>
-
-          <div class="result-box">
-            <div class="result-label">Estimated Add-on Payment Impact</div>
-            <div class="result-value" id="addonImpact">$0/mo</div>
+            <div class="result-box">
+              <div class="result-label">Total of Dealer Add-ons/fees combined with Tax and Registration fees.</div>
+              <div class="result-value" id="addonImpact">$0.00</div>
+              <div class="helper" id="addonImpactPayment">$0.00/mo payment impact</div>
+              <div class="helper">Shows the total dollar amount of dealer add-ons, taxes, doc fee, and registration fees, plus the estimated monthly payment impact.</div>
+            </div>
           </div>
         </div>
 
-        <h3>AI Deal Tip</h3>
-        <div id="aiTip" class="tip-card">
-          <div class="tip-title">Ready to calculate</div>
-          <p class="tip-text">Enter the deal numbers and compare the dealer’s quoted payment.</p>
-        </div>
+        <div class="card deal-check-card">
+          <h2>Dealer Quote Check</h2>
+          <div class="section-grid">
+            <div class="full-width">
+              <label for="dealerQuote">Dealer Quoted Monthly Payment</label>
+              <input id="dealerQuote" class="money-input" type="text" inputmode="decimal" value="$725.00" />
+              <div class="helper">What the dealership told you your payment will be.</div>
+            </div>
 
-        <h3>Questions to Ask</h3>
-        <ul class="questions" id="questionsList">
-          <li>What APR and term are you using?</li>
-          <li>Can I see the full buyer’s order?</li>
-          <li>Are any products or add-ons included in this payment?</li>
-        </ul>
+            <div class="full-width">
+              <div class="result-box">
+                <div class="result-label">Dealer Quote Difference</div>
+                <div class="result-value" id="paymentDifference">$0</div>
+                <div class="helper">Difference in monthly payment between your estimate and the dealer’s quote.</div>
+              </div>
+            </div>
+
+            <div class="full-width">
+              <div class="result-box">
+                <div class="result-label">Difference Over Loan Term</div>
+                <div class="result-value" id="totalDifference">$0</div>
+                <div class="helper">Total dollar difference between your estimate and the dealer’s quote over the full loan term.</div>
+              </div>
+            </div>
+          </div>
+
+          <h3>AI Deal Tip</h3>
+          <div id="aiTip" class="tip-card">
+            <div class="tip-title">Ready to calculate</div>
+            <p class="tip-text">Enter the deal numbers and compare the dealer’s quoted payment.</p>
+          </div>
+
+          <h3>Questions to Ask</h3>
+          <ul class="questions" id="questionsList">
+            <li>What APR and term are you using?</li>
+            <li>Can I see the full buyer’s order?</li>
+            <li>Are any products or add-ons included in this payment?</li>
+          </ul>
+        </div>
       </aside>
     </section>
   </main>
@@ -470,11 +541,31 @@
       maximumFractionDigits: 2
     });
 
+    const NEW_LINE = String.fromCharCode(10);
+
+    function getElement(id) {
+      return document.getElementById(id);
+    }
+
     function getNumber(id) {
-      const rawValue = String(document.getElementById(id).value || '');
+      const element = getElement(id);
+      if (!element) return 0;
+
+      const rawValue = String(element.value || '');
       const cleanedValue = rawValue.replace(/[^0-9.-]/g, '');
       const value = parseFloat(cleanedValue);
+
       return Number.isFinite(value) ? value : 0;
+    }
+
+    function setText(id, value) {
+      const element = getElement(id);
+      if (element) element.textContent = value;
+    }
+
+    function setHtml(id, value) {
+      const element = getElement(id);
+      if (element) element.innerHTML = value;
     }
 
     function formatMoneyInput(element) {
@@ -482,11 +573,45 @@
       element.value = moneyWithCents.format(value);
     }
 
+    function setMoneyField(id, value) {
+      const element = getElement(id);
+      if (element) element.value = moneyWithCents.format(value || 0);
+    }
+
+    function formatSignedMoney(value) {
+      const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+      return sign + moneyWithCents.format(Math.abs(value));
+    }
+
     function calculatePayment(principal, aprPercent, termMonths) {
       if (principal <= 0 || termMonths <= 0) return 0;
+
       const monthlyRate = aprPercent / 100 / 12;
       if (monthlyRate === 0) return principal / termMonths;
+
       return principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -termMonths));
+    }
+
+    function getDealInputs() {
+      const termElement = getElement('term');
+      const stateModeElement = getElement('stateMode');
+
+      return {
+        sellingPrice: getNumber('sellingPrice'),
+        tradeValue: getNumber('tradeValue'),
+        tradePayoff: getNumber('tradePayoff'),
+        downPayment: getNumber('downPayment'),
+        rebate: getNumber('rebate'),
+        addOns: getNumber('addOns'),
+        docFee: getNumber('docFee'),
+        tagTitleFee: getNumber('tagTitleFee'),
+        taxRate: getNumber('taxRate'),
+        apr: getNumber('apr'),
+        term: parseInt(termElement ? termElement.value : '72', 10) || 72,
+        dealerQuote: getNumber('dealerQuote'),
+        stateMode: stateModeElement ? stateModeElement.value : 'trade',
+        manualTaxable: getNumber('manualTaxable')
+      };
     }
 
     function calculateTaxableAmount(inputs) {
@@ -501,77 +626,240 @@
       return Math.max(inputs.sellingPrice - inputs.tradeValue + inputs.addOns, 0);
     }
 
-    function calculateTaxableWithoutAddons(inputs) {
-      let taxableWithoutAddons;
-
-      if (inputs.stateMode === 'manual') {
-        taxableWithoutAddons = Math.max(inputs.manualTaxable - inputs.addOns, 0);
-      } else if (inputs.stateMode === 'full') {
-        taxableWithoutAddons = Math.max(inputs.sellingPrice, 0);
-      } else {
-        taxableWithoutAddons = Math.max(inputs.sellingPrice - inputs.tradeValue, 0);
-      }
-
-      return taxableWithoutAddons * (inputs.taxRate / 100);
-    }
-
-    function calculateDeal() {
-      const inputs = {
-        sellingPrice: getNumber('sellingPrice'),
-        tradeValue: getNumber('tradeValue'),
-        tradePayoff: getNumber('tradePayoff'),
-        downPayment: getNumber('downPayment'),
-        rebate: getNumber('rebate'),
-        addOns: getNumber('addOns'),
-        docFee: getNumber('docFee'),
-        tagTitleFee: getNumber('tagTitleFee'),
-        taxRate: getNumber('taxRate'),
-        apr: getNumber('apr'),
-        term: parseInt(document.getElementById('term').value, 10),
-        dealerQuote: getNumber('dealerQuote'),
-        stateMode: document.getElementById('stateMode').value,
-        manualTaxable: getNumber('manualTaxable')
-      };
-
+    function getDealCalculations() {
+      const inputs = getDealInputs();
       const taxableAmount = calculateTaxableAmount(inputs);
       const taxCharge = taxableAmount * (inputs.taxRate / 100);
+      const totalTaxesFees = taxCharge + inputs.docFee + inputs.tagTitleFee;
 
       const tradeDifference = inputs.sellingPrice - inputs.tradeValue + inputs.addOns;
       const subtotal = tradeDifference + taxCharge + inputs.docFee + inputs.tagTitleFee + inputs.tradePayoff;
       const amountFinanced = Math.max(subtotal - inputs.downPayment - inputs.rebate, 0);
       const monthlyPayment = calculatePayment(amountFinanced, inputs.apr, inputs.term);
 
-      const amountFinancedWithoutAddons = Math.max(
-        (inputs.sellingPrice - inputs.tradeValue) +
-        calculateTaxableWithoutAddons(inputs) +
-        inputs.docFee +
-        inputs.tagTitleFee +
-        inputs.tradePayoff -
-        inputs.downPayment -
-        inputs.rebate,
+      const amountFinancedWithoutExtras = Math.max(
+        inputs.sellingPrice - inputs.tradeValue + inputs.tradePayoff - inputs.downPayment - inputs.rebate,
         0
       );
 
-      const paymentWithoutAddons = calculatePayment(amountFinancedWithoutAddons, inputs.apr, inputs.term);
-      const addonImpact = Math.max(monthlyPayment - paymentWithoutAddons, 0);
+      const paymentWithoutExtras = calculatePayment(amountFinancedWithoutExtras, inputs.apr, inputs.term);
+      const addonImpact = Math.max(monthlyPayment - paymentWithoutExtras, 0);
+      const addonFeesTotalImpact = inputs.addOns + totalTaxesFees;
 
       const paymentDifference = inputs.dealerQuote - monthlyPayment;
       const totalDifference = paymentDifference * inputs.term;
 
-      document.getElementById('monthlyPayment').textContent = moneyWithCents.format(monthlyPayment);
-      document.getElementById('amountFinanced').textContent = moneyFormatter.format(amountFinanced);
-      document.getElementById('taxCharge').textContent = moneyFormatter.format(taxCharge);
-      document.getElementById('paymentDifference').textContent = moneyWithCents.format(paymentDifference);
-      document.getElementById('totalDifference').textContent = moneyFormatter.format(totalDifference);
-      document.getElementById('addonImpact').textContent = moneyWithCents.format(addonImpact) + '/mo';
+      return {
+        inputs: inputs,
+        taxableAmount: taxableAmount,
+        taxCharge: taxCharge,
+        totalTaxesFees: totalTaxesFees,
+        amountFinanced: amountFinanced,
+        monthlyPayment: monthlyPayment,
+        addonImpact: addonImpact,
+        addonFeesTotalImpact: addonFeesTotalImpact,
+        paymentDifference: paymentDifference,
+        totalDifference: totalDifference
+      };
+    }
 
-      updateAiTip(paymentDifference, totalDifference, addonImpact, inputs);
+    function calculateTradeScenario(amountFinanced, delta, inputs) {
+      let principal = amountFinanced - delta;
+
+      if (inputs.stateMode === 'trade') {
+        principal -= delta * (inputs.taxRate / 100);
+      }
+
+      return calculatePayment(Math.max(principal, 0), inputs.apr, inputs.term);
+    }
+
+    function calculateDeal() {
+      const calc = getDealCalculations();
+      const inputs = calc.inputs;
+
+      setText('monthlyPayment', moneyWithCents.format(calc.monthlyPayment));
+      setText('amountFinanced', moneyWithCents.format(calc.amountFinanced));
+      setText('taxCharge', moneyWithCents.format(calc.taxCharge));
+      setText('totalTaxesFees', moneyWithCents.format(calc.totalTaxesFees));
+      setText('paymentDifference', formatSignedMoney(calc.paymentDifference));
+      setText('totalDifference', moneyWithCents.format(calc.totalDifference));
+      setText('addonImpact', moneyWithCents.format(calc.addonFeesTotalImpact));
+      setText('addonImpactPayment', moneyWithCents.format(calc.addonImpact) + '/mo payment impact');
+
+      const down1 = calculatePayment(Math.max(calc.amountFinanced - 1000, 0), inputs.apr, inputs.term);
+      const down2 = calculatePayment(Math.max(calc.amountFinanced - 2000, 0), inputs.apr, inputs.term);
+      const down3 = calculatePayment(Math.max(calc.amountFinanced - 3000, 0), inputs.apr, inputs.term);
+
+      setHtml('altDown', '<strong class="down-scenario">If you were to put additional money down:</strong><br>' +
+        '$1,000 → ' + moneyWithCents.format(down1) + '<br>' +
+        '$2,000 → ' + moneyWithCents.format(down2) + '<br>' +
+        '$3,000 → ' + moneyWithCents.format(down3));
+
+      const trade500 = calculateTradeScenario(calc.amountFinanced, 500, inputs);
+      const trade1000 = calculateTradeScenario(calc.amountFinanced, 1000, inputs);
+      const trade1500 = calculateTradeScenario(calc.amountFinanced, 1500, inputs);
+
+      setHtml('altTrade', '<strong class="trade-scenario">If the dealer were to give you additional money for your trade-in:</strong><br>' +
+        '$500 → ' + moneyWithCents.format(trade500) + '<br>' +
+        '$1,000 → ' + moneyWithCents.format(trade1000) + '<br>' +
+        '$1,500 → ' + moneyWithCents.format(trade1500));
+
+      updateAiTip(calc.paymentDifference, calc.totalDifference, calc.addonImpact, inputs);
+    }
+
+    function getTaxMethodLabel(value) {
+      if (value === 'trade') return 'Tax the trade difference';
+      if (value === 'full') return 'Tax full selling price';
+      if (value === 'manual') return 'Manual taxable amount';
+      return value;
+    }
+
+    function buildDealSummaryRows() {
+      const calc = getDealCalculations();
+      const inputs = calc.inputs;
+
+      return {
+        title: 'Car Payment Calculator Deal Summary',
+        generated: 'Generated: ' + new Date().toLocaleString(),
+        sections: [
+          {
+            heading: 'Deal Inputs',
+            rows: [
+              ['Vehicle Selling Price', moneyWithCents.format(inputs.sellingPrice)],
+              ['Dealer Add-ons / Accessories', moneyWithCents.format(inputs.addOns)],
+              ['Rebate', moneyWithCents.format(inputs.rebate)],
+              ['Trade-In Value', moneyWithCents.format(inputs.tradeValue)],
+              ['Trade Payoff', moneyWithCents.format(inputs.tradePayoff)],
+              ['Cash Down', moneyWithCents.format(inputs.downPayment)],
+              ['Doc Fee / Dealer Services', moneyWithCents.format(inputs.docFee)],
+              ['Tag / Title / Registration', moneyWithCents.format(inputs.tagTitleFee)],
+              ['Tax Rate', Number(inputs.taxRate).toFixed(2) + '%'],
+              ['Tax Calculation Method', getTaxMethodLabel(inputs.stateMode)],
+              ['Interest Rate / APR', Number(inputs.apr).toFixed(2) + '%'],
+              ['Loan Term', inputs.term + ' months'],
+              ['Dealer Quoted Monthly Payment', moneyWithCents.format(inputs.dealerQuote)]
+            ]
+          },
+          {
+            heading: 'Calculated Results',
+            rows: [
+              ['Estimated Monthly Payment', moneyWithCents.format(calc.monthlyPayment)],
+              ['Total Amount Financed', moneyWithCents.format(calc.amountFinanced)],
+              ['Estimated Tax', moneyWithCents.format(calc.taxCharge)],
+              ['Total Taxes & Fees', moneyWithCents.format(calc.totalTaxesFees)],
+              ['Total Dealer Add-ons, Taxes & Fees', moneyWithCents.format(calc.addonFeesTotalImpact)],
+              ['Add-ons, Taxes & Fees Payment Impact', moneyWithCents.format(calc.addonImpact) + '/mo'],
+              ['Dealer Quote Difference', formatSignedMoney(calc.paymentDifference) + '/mo'],
+              ['Difference Over Loan Term', moneyWithCents.format(calc.totalDifference)]
+            ]
+          }
+        ],
+        disclaimer: 'Disclaimer: This is an estimate only. Taxes, fees, registration, lender calculations, credit approval, and state rules may vary. Always ask the dealership for a complete buyer’s order.'
+      };
+    }
+
+    function buildDealSummaryText() {
+      const summary = buildDealSummaryRows();
+      const lines = [summary.title, summary.generated, ''];
+
+      summary.sections.forEach(function(section) {
+        lines.push(section.heading);
+        section.rows.forEach(function(row) {
+          lines.push(row[0] + ': ' + row[1]);
+        });
+        lines.push('');
+      });
+
+      lines.push(summary.disclaimer);
+      return lines.join(NEW_LINE);
+    }
+
+    function downloadDealSummaryPdf() {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('PDF generator did not load. Check your internet connection and try again.');
+        return;
+      }
+
+      const summary = buildDealSummaryRows();
+      const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 48;
+      let y = 54;
+
+      function checkPageSpace(requiredSpace) {
+        if (y + requiredSpace > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      }
+
+      doc.setFillColor(16, 24, 39);
+      doc.rect(0, 0, pageWidth, 92, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text(summary.title, margin, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(summary.generated, margin, y + 22);
+      y = 126;
+
+      summary.sections.forEach(function(section) {
+        checkPageSpace(44);
+        doc.setTextColor(23, 32, 51);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.text(section.heading, margin, y);
+        y += 18;
+
+        section.rows.forEach(function(row) {
+          checkPageSpace(24);
+          doc.setFillColor(246, 248, 252);
+          doc.roundedRect(margin, y - 12, pageWidth - margin * 2, 24, 4, 4, 'F');
+          doc.setTextColor(85, 95, 115);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          doc.text(String(row[0]), margin + 10, y + 4);
+          doc.setTextColor(23, 32, 51);
+          doc.setFont('helvetica', 'bold');
+          doc.text(String(row[1]), pageWidth - margin - 10, y + 4, { align: 'right' });
+          y += 30;
+        });
+
+        y += 12;
+      });
+
+      checkPageSpace(60);
+      doc.setTextColor(100, 116, 139);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const disclaimerLines = doc.splitTextToSize(summary.disclaimer, pageWidth - margin * 2);
+      doc.text(disclaimerLines, margin, y);
+      doc.save('car-payment-summary.pdf');
+    }
+
+    function printDealSummary() {
+      const summary = buildDealSummaryText().split(NEW_LINE).join('<br>');
+      const printWindow = window.open('', '_blank');
+
+      if (!printWindow) {
+        alert('Please allow pop-ups to print the summary.');
+        return;
+      }
+
+      printWindow.document.write('<html><head><title>Car Payment Summary</title></head><body style="font-family: Arial, sans-serif; line-height: 1.45; padding: 24px;">' + summary + '</body></html>');
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
     }
 
     function updateAiTip(paymentDifference, totalDifference, addonImpact, inputs) {
-      const tip = document.getElementById('aiTip');
-      const questions = document.getElementById('questionsList');
+      const tip = getElement('aiTip');
+      const questions = getElement('questionsList');
       const absoluteDifference = Math.abs(paymentDifference);
+
+      if (!tip || !questions) return;
 
       tip.className = 'tip-card';
 
@@ -586,7 +874,7 @@
       if (paymentDifference > 60) {
         tip.classList.add('danger');
         title = 'High payment difference detected';
-        text = `The dealer quote is about ${moneyWithCents.format(paymentDifference)} higher per month than this estimate. Over ${inputs.term} months, that is about ${moneyFormatter.format(totalDifference)}. Ask for a complete breakdown before agreeing to the monthly payment.`;
+        text = 'The dealer quote is about ' + moneyWithCents.format(paymentDifference) + ' higher per month than this estimate. Over ' + inputs.term + ' months, that is about ' + moneyWithCents.format(totalDifference) + '. Ask for a complete breakdown before agreeing to the monthly payment.';
         questionItems = [
           'What selling price, APR, and term are being used?',
           'Is this the lender buy rate or a marked-up rate?',
@@ -596,7 +884,7 @@
       } else if (paymentDifference > 25) {
         tip.classList.add('warn');
         title = 'Possible payment padding or missing detail';
-        text = `The dealer quote is about ${moneyWithCents.format(paymentDifference)} higher per month than expected. This may be caused by dealer add-ons, rate markup, fees, tax assumptions, or payment padding.`;
+        text = 'The dealer quote is about ' + moneyWithCents.format(paymentDifference) + ' higher per month than expected. This may be caused by dealer add-ons, rate markup, fees, tax assumptions, or payment padding.';
         questionItems = [
           'Can you show the amount financed line by line?',
           'What dealer add-ons are included in this payment?',
@@ -606,7 +894,7 @@
       } else if (paymentDifference > 10) {
         tip.classList.add('warn');
         title = 'Slightly higher than expected';
-        text = `The dealer quote is about ${moneyWithCents.format(paymentDifference)} higher per month. This may be normal, but it is worth verifying the APR, term, fees, and taxes.`;
+        text = 'The dealer quote is about ' + moneyWithCents.format(paymentDifference) + ' higher per month. This may be normal, but it is worth verifying the APR, term, fees, and taxes.';
         questionItems = [
           'What fees are included?',
           'What is the exact APR?',
@@ -615,7 +903,7 @@
       } else if (paymentDifference < -10) {
         tip.classList.add('good');
         title = 'Dealer quote is lower than estimate';
-        text = `The dealer quote is lower than this estimate by about ${moneyWithCents.format(absoluteDifference)} per month. Confirm the APR, term, down payment, and amount financed so you know why.`;
+        text = 'The dealer quote is lower than this estimate by about ' + moneyWithCents.format(absoluteDifference) + ' per month. Confirm the APR, term, down payment, and amount financed so you know why.';
         questionItems = [
           'Is the payment based on the same down payment and term?',
           'Is this quote approved by a lender?',
@@ -626,54 +914,73 @@
       }
 
       if (addonImpact > 10) {
-        text += ` Dealer add-ons appear to add about ${moneyWithCents.format(addonImpact)} per month.`;
+        text += ' Dealer add-ons, taxes, and fees appear to add about ' + moneyWithCents.format(addonImpact) + ' per month.';
       }
 
-      tip.innerHTML = `<div class="tip-title">${title}</div><p class="tip-text">${text}</p>`;
-      questions.innerHTML = questionItems.map(item => `<li>${item}</li>`).join('');
+      tip.innerHTML = '<div class="tip-title">' + title + '</div><p class="tip-text">' + text + '</p>';
+      questions.innerHTML = questionItems.map(function(item) {
+        return '<li>' + item + '</li>';
+      }).join('');
     }
 
     function resetExample() {
-      document.getElementById('sellingPrice').value = '$35,000.00';
-      document.getElementById('tradeValue').value = '$8,000.00';
-      document.getElementById('tradePayoff').value = '$5,000.00';
-      document.getElementById('downPayment').value = '$2,000.00';
-      document.getElementById('rebate').value = '$0.00';
-      document.getElementById('addOns').value = '$1,295.00';
-      document.getElementById('docFee').value = '$799.00';
-      document.getElementById('tagTitleFee').value = '$250.00';
-      document.getElementById('taxRate').value = '3.90';
-      document.getElementById('apr').value = 7.99;
-      document.getElementById('term').value = 72;
-      document.getElementById('dealerQuote').value = '$725.00';
-      document.getElementById('stateMode').value = 'trade';
-      document.getElementById('manualTaxable').value = 0;
+      setMoneyField('sellingPrice', 35000);
+      setMoneyField('tradeValue', 8000);
+      setMoneyField('tradePayoff', 5000);
+      setMoneyField('downPayment', 2000);
+      setMoneyField('rebate', 0);
+      setMoneyField('addOns', 1295);
+      setMoneyField('docFee', 799);
+      setMoneyField('tagTitleFee', 250);
+
+      const taxRate = getElement('taxRate');
+      const apr = getElement('apr');
+      const term = getElement('term');
+      const stateMode = getElement('stateMode');
+      const manualTaxable = getElement('manualTaxable');
+
+      if (taxRate) taxRate.value = '3.90';
+      if (apr) apr.value = '7.99';
+      if (term) term.value = '72';
+      if (stateMode) stateMode.value = 'trade';
+      if (manualTaxable) manualTaxable.value = '0';
+
+      setMoneyField('dealerQuote', 725);
       toggleManualTaxable();
       calculateDeal();
     }
 
     function toggleManualTaxable() {
-      const stateMode = document.getElementById('stateMode').value;
-      document.getElementById('manualTaxableWrap').style.display = stateMode === 'manual' ? 'block' : 'none';
+      const stateMode = getElement('stateMode');
+      const manualTaxableWrap = getElement('manualTaxableWrap');
+      if (!stateMode || !manualTaxableWrap) return;
+
+      manualTaxableWrap.style.display = stateMode.value === 'manual' ? 'block' : 'none';
     }
 
-    document.querySelectorAll('input, select').forEach(element => {
+    document.querySelectorAll('input, select').forEach(function(element) {
       if (element.classList.contains('money-input')) {
-        element.addEventListener('blur', () => formatMoneyInput(element));
-        element.addEventListener('focus', () => {
-          element.value = getNumber(element.id) || '';
+        element.addEventListener('blur', function() {
+          formatMoneyInput(element);
+        });
+
+        element.addEventListener('focus', function() {
+          const value = getNumber(element.id);
+          element.value = value ? String(value) : '';
         });
       }
 
-      if (element.id === 'taxRate') {
-        element.addEventListener('blur', () => {
+      if (element.id === 'taxRate' || element.id === 'apr') {
+        element.addEventListener('blur', function() {
           const val = parseFloat(element.value);
-          if (!isNaN(val)) element.value = val.toFixed(2);
+          if (!Number.isNaN(val)) {
+            element.value = val.toFixed(2);
+          }
         });
       }
 
       element.addEventListener('input', calculateDeal);
-      element.addEventListener('change', () => {
+      element.addEventListener('change', function() {
         toggleManualTaxable();
         calculateDeal();
       });
